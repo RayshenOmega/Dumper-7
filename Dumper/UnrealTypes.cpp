@@ -60,13 +60,6 @@ std::string MakeNameValid(std::string&& Name)
 		default:
 			break;
 		}
-
-		char c = Name[i];
-
-		if (c != '_' && !((c <= 'z' && c >= 'a') || (c <= 'Z' && c >= 'A') || (c <= '9' && c >= '0')))
-		{
-			Name[i] = '_';
-		}
 	}
 
 	return Name;

@@ -5061,9 +5061,12 @@ namespace UC
 		{
 			if (*this)
 			{
-				std::wstring WData(Data);
-#pragma warning(suppress: 4244)
-				return std::string(WData.begin(), WData.end());
+				std::wstring wideStr(Data);
+				auto size = WideCharToMultiByte(CP_UTF8, 0, wideStr.data(), wideStr.size(), nullptr, 0, nullptr, nullptr);
+				std::string narrowStr(size, 0);
+				WideCharToMultiByte(CP_UTF8, 0, wideStr.data(), wideStr.size(), narrowStr.data(), narrowStr.size(), nullptr, nullptr);
+
+				return narrowStr;
 			}
 
 			return "";
