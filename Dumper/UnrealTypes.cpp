@@ -57,6 +57,9 @@ std::string MakeNameValid(std::string&& Name)
 		case '/':
 			Name.replace(i, 1, "Slash");
 			continue;
+		case ' ':
+			Name.replace(i, 1, "_");
+			continue;
 		default:
 			break;
 		}
