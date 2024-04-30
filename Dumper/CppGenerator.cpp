@@ -5062,9 +5062,9 @@ namespace UC
 			if (*this)
 			{
 				std::wstring wideStr(Data);
-				auto size = WideCharToMultiByte(CP_UTF8, 0, wideStr.data(), wideStr.size(), nullptr, 0, (const char *)'_', nullptr);
+				auto size = WideCharToMultiByte(CP_UTF8, 0, wideStr.data(), wideStr.size(), nullptr, 0, nullptr, nullptr);
 				std::string narrowStr(size, 0);
-				WideCharToMultiByte(CP_UTF8, 0, wideStr.data(), wideStr.size(), narrowStr.data(), narrowStr.size(), (const char *)'_', nullptr);
+				WideCharToMultiByte(CP_UTF8, 0, wideStr.data(), wideStr.size(), narrowStr.data(), narrowStr.size(), nullptr, nullptr);
 
 				return narrowStr;
 			}
