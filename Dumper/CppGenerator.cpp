@@ -1361,7 +1361,7 @@ void CppGenerator::GenerateSDKHeader(StreamType& SdkHpp)
 
 	auto ForEachElementCallback = [&SdkHpp](const PackageManagerIterationParams& OldParams, const PackageManagerIterationParams& NewParams, bool bIsStruct) -> void
 	{
-		PackageInfoHandle CurrentPackage = PackageManager::GetInfo(NewParams.RequiredPackge);
+		PackageInfoHandle CurrentPackage = PackageManager::GetInfo(NewParams.RequiredPackage);
 
 		const bool bHasClassesFile = CurrentPackage.HasClasses();
 		const bool bHasStructsFile = (CurrentPackage.HasStructs() || CurrentPackage.HasEnums());
@@ -2862,6 +2862,9 @@ namespace BasicFilesImpleUtils
 	std::string GetObjectName(class UClass* Class);
 	int32 GetObjectIndex(class UClass* Class);
 
+	/* FName represented as a uint64. */
+	uint64 GetObjFNameAsUInt64(class UClass* Class);
+
 	UObject* GetObjectByIndex(int32 Index);
 
 	UFunction* FindFunctionByFName(const FName* Name);
@@ -2887,6 +2890,11 @@ std::string BasicFilesImpleUtils::GetObjectName(class UClass* Class)
 int32 BasicFilesImpleUtils::GetObjectIndex(class UClass* Class)
 {
 	return Class->Index;
+}
+
+uint64 BasicFilesImpleUtils::GetObjFNameAsUInt64(class UClass* Class)
+{
+	return *reinterpret_cast<uint64*>(&Class->Name);
 }
 
 class UObject* BasicFilesImpleUtils::GetObjectByIndex(int32 Index)
@@ -2939,40 +2947,44 @@ template<StringLiteral Name, bool bIsFullName = false, StringLiteral NonFullName
 class UClass* StaticBPGeneratedClassImpl()
 {
 	/* Could be external function, not really unique to this StaticClass functon */
-	static auto SetClassIndex = [](UClass* Class, int32& Index) -> UClass*
+	static auto SetClassIndex = [](UClass* Class, int32& Index, uint64& ClassName) -> UClass*
 	{
 		if (Class)
+		{
 			Index = BasicFilesImpleUtils::GetObjectIndex(Class);
+			ClassName = BasicFilesImpleUtils::GetObjFNameAsUInt64(Class);
+		}
 
 		return Class;
 	};
 
 	static int32 ClassIdx = 0x0;
+	static uint64 ClassName = 0x0;
 
 	/* Use the full name to find an object */
 	if constexpr (bIsFullName)
 	{
-		if (ClassIdx == 0x0)
-			return SetClassIndex(BasicFilesImpleUtils::FindClassByFullName(Name), ClassIdx);
+		if (ClassIdx == 0x0) [[unlikely]]
+			return SetClassIndex(BasicFilesImpleUtils::FindClassByFullName(Name), ClassIdx, ClassName);
 
 		UClass* ClassObj = static_cast<UClass*>(BasicFilesImpleUtils::GetObjectByIndex(ClassIdx));
 
 		/* Could use cast flags too to save some string comparisons */
-		if (!ClassObj || BasicFilesImpleUtils::GetObjectName(ClassObj) != static_cast<std::string>(Name))
-			return SetClassIndex(BasicFilesImpleUtils::FindClassByFullName(Name), ClassIdx);
+		if (!ClassObj || BasicFilesImpleUtils::GetObjFNameAsUInt64(ClassObj) != ClassName)
+			return SetClassIndex(BasicFilesImpleUtils::FindClassByFullName(Name), ClassIdx, ClassName);
 
 		return ClassObj;
 	}
 	else /* Default, use just the name to find an object*/
 	{
-		if (ClassIdx == 0x0)
-			return SetClassIndex(BasicFilesImpleUtils::FindClassByName(Name), ClassIdx);
+		if (ClassIdx == 0x0) [[unlikely]]
+			return SetClassIndex(BasicFilesImpleUtils::FindClassByName(Name), ClassIdx, ClassName);
 
 		UClass* ClassObj = static_cast<UClass*>(BasicFilesImpleUtils::GetObjectByIndex(ClassIdx));
 
 		/* Could use cast flags too to save some string comparisons */
-		if (!ClassObj || BasicFilesImpleUtils::GetObjectName(ClassObj) != static_cast<std::string>(Name))
-			return SetClassIndex(BasicFilesImpleUtils::FindClassByName(Name), ClassIdx);
+		if (!ClassObj || BasicFilesImpleUtils::GetObjFNameAsUInt64(ClassObj) != ClassName)
+			return SetClassIndex(BasicFilesImpleUtils::FindClassByName(Name), ClassIdx, ClassName);
 
 		return ClassObj;
 	}
@@ -3405,19 +3417,19 @@ R"({
 
 		/* struct FNameEntry */
 		PredefinedStruct FNameEntry = PredefinedStruct{
-			.UniqueName = "FNameEntry", .Size = FNameEntryHeaderSize + 0x800, .Alignment = 0x2, .bUseExplictAlignment = false, .bIsFinal = true, .bIsClass = false, .bIsUnion = false, .Super = nullptr
+			.UniqueName = "FNameEntry", .Size = Off::FNameEntry::NamePool::StringOffset + 0x800, .Alignment = 0x2, .bUseExplictAlignment = false, .bIsFinal = true, .bIsClass = false, .bIsUnion = false, .Super = nullptr
 		};
 
 		FNameEntry.Properties =
 		{
 			PredefinedMember {
 				.Comment = "NOT AUTO-GENERATED PROPERTY",
-				.Type = "struct FNameEntryHeader", .Name = "Header", .Offset = 0x0, .Size = FNameEntryHeaderSize, .ArrayDim = 0x1, .Alignment = 0x2,
+				.Type = "struct FNameEntryHeader", .Name = "Header", .Offset = Off::FNameEntry::NamePool::HeaderOffset, .Size = FNameEntryHeaderSize, .ArrayDim = 0x1, .Alignment = 0x2,
 				.bIsStatic = false, .bIsZeroSizeMember = false, .bIsBitField = false, .BitIndex = 0xFF
 			},
 			PredefinedMember {
 				.Comment = "NOT AUTO-GENERATED PROPERTY",
-				.Type = "union FStringData", .Name = "Name", .Offset = FNameEntryHeaderSize, .Size = 0x800, .ArrayDim = 0x1, .Alignment = 0x2,
+				.Type = "union FStringData", .Name = "Name", .Offset = Off::FNameEntry::NamePool::HeaderOffset + FNameEntryHeaderSize, .Size = 0x800, .ArrayDim = 0x1, .Alignment = 0x2,
 				.bIsStatic = false, .bIsZeroSizeMember = false, .bIsBitField = false, .BitIndex = 0xFF
 			},
 		};
@@ -3991,7 +4003,7 @@ public:
 	/* class TPersistentObjectPtr */
 	PredefinedStruct TPersistentObjectPtr = PredefinedStruct{
 		.CustomTemplateText = "template<typename TObjectID>",
-		.UniqueName = "TPersistentObjectPtr", .Size = Off::FNameEntry::NamePool::StringOffset + 0x08, .Alignment = 0x8, .bUseExplictAlignment = false, .bIsFinal = false, .bIsClass = true, .bIsUnion = false, .Super = nullptr
+		.UniqueName = "TPersistentObjectPtr", .Size = 0x0, .Alignment = 0x8, .bUseExplictAlignment = false, .bIsFinal = false, .bIsClass = true, .bIsUnion = false, .Super = nullptr
 	};
 
 	const int32 ObjectIDOffset = Settings::Internal::bIsWeakObjectPtrWithoutTag ? 0x8 : 0xC;
@@ -4459,7 +4471,7 @@ enum class EFunctionFlags : uint32
 	/* enum class EClassFlags */
 	BasicHpp <<
 		R"(
-enum class EClassFlags : int32
+enum class EClassFlags : uint32
 {
 	CLASS_None						= 0x00000000u,
 	Abstract						= 0x00000001u,
