@@ -59,6 +59,10 @@ std::string MakeNameValid(std::string&& Name)
 			continue;
 		case ' ':
 		case '?':
+		case '(':
+		case ')':
+		case '#':
+		case ':':
 			Name.replace(i, 1, "_");
 			continue;
 		default:
