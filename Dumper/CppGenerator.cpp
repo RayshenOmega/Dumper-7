@@ -729,7 +729,8 @@ void CppGenerator::GenerateStruct(const StructWrapper& Struct, StreamType& Struc
   , bIsClass ? "class" : (bIsUnion ? "union" : "struct")
   , Struct.ShouldUseExplicitAlignment() || bHasReusedTrailingPadding ? std::format("alignas(0x{:02X}) ", Struct.GetAlignment()) : ""
   , UniqueName
-  , Struct.IsFinal() ? " final" : ""
+  , Struct.IsFinal() ? "" : ""
+  //, Struct.IsFinal() ? " final" : ""
   , bHasValidSuper ? (" : public " + UniqueSuperName) : "");
 
 	MemberManager Members = Struct.GetMembers();
