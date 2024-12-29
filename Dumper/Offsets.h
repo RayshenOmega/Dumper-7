@@ -2,33 +2,6 @@
 #include "Enums.h"
 #include "Settings.h"
 
-
-struct FFixedUObjectArrayLayout
-{
-	int32 ObjectsOffset = -1;
-	int32 MaxObjectsOffset = -1;
-	int32 NumObjectsOffset = -1;
-
-	inline bool IsValid() const
-	{
-		return ObjectsOffset != -1 && MaxObjectsOffset != -1 && NumObjectsOffset != -1;
-	}
-};
-
-struct FChunkedFixedUObjectArrayLayout
-{
-	int32 ObjectsOffset = -1;
-	int32 MaxElementsOffset = -1;
-	int32 NumElementsOffset = -1;
-	int32 MaxChunksOffset = -1;
-	int32 NumChunksOffset = -1;
-
-	inline bool IsValid() const
-	{
-		return ObjectsOffset != -1 && MaxElementsOffset != -1 && NumElementsOffset != -1 && MaxChunksOffset != -1 && NumChunksOffset != -1;
-	}
-};
-
 namespace Off
 {
 	void Init();
@@ -42,7 +15,7 @@ namespace Off
 			inline int32 PEOffset;
 
 			void InitPE();
-			void InitPE(int32 Index, const char* const ModuleName = nullptr);
+			void InitPE(int32 Index);
 		}
 
 		namespace World
@@ -104,13 +77,8 @@ namespace Off
 
 	namespace FUObjectArray
 	{
-		inline FFixedUObjectArrayLayout FixedLayout;
-		inline FChunkedFixedUObjectArrayLayout ChunkedFixedLayout;
-
-		inline bool bIsChunked = false;
-
-		inline int32 GetObjectsOffset() { return  bIsChunked ? ChunkedFixedLayout.ObjectsOffset : FixedLayout.ObjectsOffset; }
-		inline int32 GetNumElementsOffset() { return  bIsChunked ? ChunkedFixedLayout.NumElementsOffset : FixedLayout.NumObjectsOffset; }
+		inline int32 Ptr;
+		inline int32 Num;
 	}
 
 	namespace NameArray

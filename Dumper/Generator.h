@@ -40,7 +40,6 @@ private:
 
 private:
     static inline fs::path DumperFolder;
-    static inline bool bDumpedGObjects = false;
 
 public:
     static void InitEngineCore();
@@ -61,14 +60,7 @@ public:
             if (!SetupDumperFolder())
                 return;
 
-            if (!bDumpedGObjects)
-            {
-                bDumpedGObjects = true;
-                ObjectArray::DumpObjects(DumperFolder);
-
-                if (Settings::Internal::bUseFProperty)
-                    ObjectArray::DumpObjectsWithProperties(DumperFolder);
-            }
+            ObjectArray::DumpObjects(DumperFolder);
         }
 
         if (!SetupFolders(GeneratorType::MainFolderName, GeneratorType::MainFolder, GeneratorType::SubfolderName, GeneratorType::Subfolder))

@@ -3,57 +3,74 @@
 #include "UnrealTypes.h"
 #include "NameArray.h"
 
-#include "UnicodeNames.h"
 
-std::string MakeNameValid(std::wstring&& Name)
+std::string MakeNameValid(std::string&& Name)
 {
-	static constexpr const wchar_t* Numbers[10] =
+	static constexpr const char* Numbers[10] =
 	{
-		L"Zero",
-		L"One",
-		L"Two",
-		L"Three",
-		L"Four",
-		L"Five",
-		L"Six",
-		L"Seven",
-		L"Eight",
-		L"Nine"
+		"Zero",
+		"One",
+		"Two",
+		"Three",
+		"Four",
+		"Five",
+		"Six",
+		"Seven",
+		"Eight",
+		"Nine"
 	};
 
-	if (Name == L"bool")
+	if (Name == "bool")
 		return "Bool";
 
-	if (Name == L"NULL")
+	if (Name == "TRUE")
+		return "TURR";
+
+	if (Name == "FALSE")
+		return "FLASE";
+
+	if (Name == "NULL")
 		return "NULLL";
 
-	/* Replace 0 with Zero or 9 with Nine, if it is the first letter of the name. */
 	if (Name[0] <= '9' && Name[0] >= '0')
 	{
 		Name.replace(0, 1, Numbers[Name[0] - '0']);
 	}
-	
-	std::u32string Strrr;
-	Strrr += UtfN::utf_cp32_t{ 200 };
-
-	std::u32string Utf32Name = UtfN::Utf16StringToUtf32String<std::u32string>(Name);
-
-	bool bIsFirstIteration = true;
-	for (auto It = UtfN::utf32_iterator<std::u32string::iterator>(Utf32Name); It; ++It)
+	else if ((Name[0] <= 'z' && Name[0] >= 'a') && Name[0] != 'b')
 	{
-		if (bIsFirstIteration && !IsUnicodeCharXIDStart(Name[0]))
-		{
-			/* Replace invalid starting character with 'm' character. 'm' for "member" */
-			Name[0] = 'm';
-
-			bIsFirstIteration = false;
-		}
-
-		if (!IsUnicodeCharXIDContinue((*It).Get()))
-			It.Replace('_');
+		Name[0] -= 0x20;
 	}
 
-	return  UtfN::Utf32StringToUtf8String<std::string>(Utf32Name);;
+	for (int i = 0; i < Name.length(); i++)
+	{
+		switch (Name[i])
+		{
+		case '+':
+			Name.replace(i, 1, "Plus");
+			continue;
+		case '-':
+			Name.replace(i, 1, "Minus");
+			continue;
+		case '*':
+			Name.replace(i, 1, "Star");
+			continue;
+		case '/':
+			Name.replace(i, 1, "Slash");
+			continue;
+		case ' ':
+		case '?':
+		case '(':
+		case ')':
+		case '#':
+		case ':':
+			Name.replace(i, 1, "_");
+			continue;
+		default:
+			break;
+		}
+	}
+
+	return Name;
 }
 
 
@@ -92,17 +109,17 @@ void FName::Init(bool bForceGNames)
 
 		if (bInitializedSuccessfully)
 		{
-			ToStr = [](const void* Name) -> std::wstring
+			ToStr = [](const void* Name) -> std::string
 			{
-				if (!Settings::Internal::bUseOutlineNumberName)
+				if (!Settings::Internal::bUseUoutlineNumberName)
 				{
-					const uint32 Number = FName(Name).GetNumber();
+					const int32 Number = FName(Name).GetNumber();
 
 					if (Number > 0)
-						return NameArray::GetNameEntry(Name).GetWString() + L'_' + std::to_wstring(Number - 1);
+						return NameArray::GetNameEntry(Name).GetString() + "_" + std::to_string(Number - 1);
 				}
 
-				return NameArray::GetNameEntry(Name).GetWString();
+				return NameArray::GetNameEntry(Name).GetString();
 			};
 
 			return;
@@ -120,56 +137,56 @@ void FName::Init(bool bForceGNames)
 
 	std::cout << std::format("Found FName::{} at Offset 0x{:X}\n\n", (Off::InSDK::Name::bIsUsingAppendStringOverToString ? "AppendString" : "ToString"), Off::InSDK::Name::AppendNameToString);
 
-	ToStr = [](const void* Name) -> std::wstring
+	ToStr = [](const void* Name) -> std::string
 	{
 		thread_local FFreableString TempString(1024);
 
 		AppendString(Name, TempString);
 
-		std::wstring OutputString = TempString.ToWString();
+		std::string OutputString = TempString.ToString();
 		TempString.ResetNum();
 
 		return OutputString;
 	};
 }
 
-void FName::Init(int32 OverrideOffset, EOffsetOverrideType OverrideType, bool bIsNamePool, const char* const ModuleName)
+void FName::Init(int32 OverrideOffset, EOffsetOverrideType OverrideType, bool bIsNamePool)
 {
 	if (OverrideType == EOffsetOverrideType::GNames)
 	{
-		const bool bInitializedSuccessfully = NameArray::TryInit(OverrideOffset, bIsNamePool, ModuleName);
+		const bool bInitializedSuccessfully = NameArray::TryInit(OverrideOffset, bIsNamePool);
 
 		if (bInitializedSuccessfully)
 		{
-			ToStr = [](const void* Name) -> std::wstring
+			ToStr = [](const void* Name) -> std::string
 			{
-				if (!Settings::Internal::bUseOutlineNumberName)
+				if (!Settings::Internal::bUseUoutlineNumberName)
 				{
-					const uint32 Number = FName(Name).GetNumber();
+					const int32 Number = FName(Name).GetNumber();
 
 					if (Number > 0)
-						return NameArray::GetNameEntry(Name).GetWString() + L'_' + std::to_wstring(Number - 1);
+						return NameArray::GetNameEntry(Name).GetString() + "_" + std::to_string(Number - 1);
 				}
 
-				return NameArray::GetNameEntry(Name).GetWString();
+				return NameArray::GetNameEntry(Name).GetString();
 			};
 		}
 
 		return;
 	}
 
-	AppendString = reinterpret_cast<void(*)(const void*, FString&)>(GetModuleBase(ModuleName) + OverrideOffset);
+	AppendString = reinterpret_cast<void(*)(const void*, FString&)>(GetImageBase() + OverrideOffset);
 
 	Off::InSDK::Name::AppendNameToString = OverrideOffset;
 	Off::InSDK::Name::bIsUsingAppendStringOverToString = OverrideType == EOffsetOverrideType::AppendString;
 
-	ToStr = [](const void* Name) -> std::wstring
+	ToStr = [](const void* Name) -> std::string
 	{
 		thread_local FFreableString TempString(1024);
 
 		AppendString(Name, TempString);
 
-		std::wstring OutputString = TempString.ToWString();
+		std::string OutputString = TempString.ToString();
 		TempString.ResetNum();
 
 		return OutputString;
@@ -202,22 +219,16 @@ void FName::InitFallback()
 	Off::InSDK::Name::AppendNameToString = AppendString ? GetOffset(AppendString) : 0x0;
 }
 
-
-std::wstring FName::ToRawWString() const
+std::string FName::ToString() const
 {
 	if (!Address)
-		return L"None";
+		return "None";
 
-	return ToStr(Address);
-}
-
-std::wstring FName::ToWString() const
-{
-	std::wstring OutputString = ToRawWString();
+	std::string OutputString = ToStr(Address);
 
 	size_t pos = OutputString.rfind('/');
 
-	if (pos == std::wstring::npos)
+	if (pos == std::string::npos)
 		return OutputString;
 
 	return OutputString.substr(pos + 1);
@@ -228,20 +239,12 @@ std::string FName::ToRawString() const
 	if (!Address)
 		return "None";
 
-	return UtfN::WStringToString(ToRawWString());
-}
-
-std::string FName::ToString() const
-{
-	if (!Address)
-		return "None";
-
-	return UtfN::WStringToString(ToWString());
+	return ToStr(Address);
 }
 
 std::string FName::ToValidString() const
 {
-	return MakeNameValid(ToWString());
+	return MakeNameValid(ToString());
 }
 
 int32 FName::GetCompIdx() const 
@@ -249,15 +252,9 @@ int32 FName::GetCompIdx() const
 	return *reinterpret_cast<const int32*>(Address + Off::FName::CompIdx);
 }
 
-uint32 FName::GetNumber() const
+int32 FName::GetNumber() const
 {
-	if (Settings::Internal::bUseOutlineNumberName)
-		return 0x0;
-
-	if (Settings::Internal::bUseNamePool)
-		return *reinterpret_cast<const uint32*>(Address + Off::FName::Number); // The number is uint32 on versions <= UE4.23 
-
-	return static_cast<uint32_t>(*reinterpret_cast<const int32*>(Address + Off::FName::Number));
+	return !Settings::Internal::bUseUoutlineNumberName ? *reinterpret_cast<const int32*>(Address + Off::FName::Number) : 0x0;
 }
 
 bool FName::operator==(FName Other) const
