@@ -22,12 +22,36 @@ enum class EFortToastType : uint8
 
 DWORD MainThread(HMODULE Module)
 {
+	//---Tof CN Sleeper---//
+    bool hasWindow = false;
+    while (hasWindow == false) {
+        EnumWindows(
+            [](HWND hWnd, LPARAM lParam) {
+                DWORD pid;
+                GetWindowThreadProcessId(hWnd, &pid);
+
+                if (pid == GetCurrentProcessId()) {
+                    *(bool *)lParam = true;
+                    return FALSE;
+                }
+
+                return TRUE;
+            },
+            (long long)&hasWindow);
+        Sleep(2000);
+    }
+	//--------------------//
+	
 	AllocConsole();
 	FILE* Dummy;
 	freopen_s(&Dummy, "CONOUT$", "w", stderr);
 	freopen_s(&Dummy, "CONIN$", "r", stdin);
 
 	auto t_1 = std::chrono::high_resolution_clock::now();
+
+	//---Hit enter in console to preform a dump---//
+	getchar();
+	//--------------------------------------------//
 
 	std::cerr << "Started Generation [Dumper-7]!\n";
 
